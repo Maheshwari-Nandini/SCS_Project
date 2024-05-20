@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./static/style.css">
+    <title>Smart Capture Surveillance</title>
+</head>
+<body>
+    <section>
+        <div class="colour"></div>
+        <div class="colour"></div>
+        <div class="colour"></div>
+        <div class="box">
+            <div class="square" style="--i: 0"></div>
+            <div class="square" style="--i: 1"></div>
+            <div class="square" style="--i: 2"></div>
+            <div class="square" style="--i: 3"></div>
+            <div class="square" style="--i: 4"></div>
+            <div class="container">
+                <div class="form">
+                    <h2>Smart Capture<br/>Surveillance</h2>
+                    <p class="forget" id="instruction">
+                        <i>Let's get started by clicking the button below</i>
+                    </p>
+                    <div class="button-container">
+                        <a  id="startBtn" class="btn" onclick="startVideo()">CLICK HERE</a>
+                        <a  id="stopBtn" class="btn" onclick="stopVideo()" style="display:none;">STOP VIDEO</a>
+                        <a  id="downloadBtn" class="btn" style="display:none;" onclick="downloadVideo()">Download Video</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script>
+        let videoFilename = '';
+
+        function startVideo() {
+            fetch('/loadP')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message.includes('started')) {
+                        alert("Video started");
+                        videoFilename = data.filename;
+                        document.getElementById('startBtn').style.display = 'none';
+                        document.getElementById('stopBtn').style.display = 'inline-block';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function stopVideo() {
+            fetch('/stop')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message.includes('stopped')) {
+                        alert("Video stopped");
+                        videoFilename = data.filename;
+                        document.getElementById('stopBtn').style.display = 'none';
+                        document.getElementById('downloadBtn').style.display = 'inline-block';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function downloadVideo() {
+            fetch(`/download-video/${videoFilename}`)
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = videoFilename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+
+                    // Reset to initial state after download
+                    document.getElementById('downloadBtn').style.display = 'none';
+                    document.getElementById('startBtn').style.display = 'inline-block';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
