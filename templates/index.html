@@ -26,40 +26,65 @@
                         <i> Let's get started by clicking the button below </i>
                     </p>
                     <div class="button-container">
-                        <a id="startBtn" class="btn" onclick="startVideo()">CLICK HERE</a>
-                        <a id="stopBtn" class="btn" onclick="stopVideo()" style="display:none;">STOP VIDEO</a>
+                        <a id="startBtn" class="btn" onclick="startRecording()">CLICK HERE</a>
+                        <a id="stopBtn" class="btn" onclick="stopRecording()" style="display:none;">STOP VIDEO</a>
                         <a id="downloadBtn" class="btn" style="display:none;" onclick="downloadVideo()">Download
                             Video</a>
                     </div>
+                    <video id="video" autoplay style="display:none;"></video>
                 </div>
             </div>
         </div>
     </section>
     <script>
+        let mediaRecorder;
+        let recordedChunks = [];
         let videoFilename = '';
 
-        function startVideo() {
-            fetch('/loadP')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.message.includes('started')) {
-                        alert("Video started");
-                        videoFilename = data.filename;
-                        document.getElementById('startBtn').style.display = 'none';
-                        document.getElementById('stopBtn').style.display = 'inline-block';
-                    }
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then(stream => {
+                    const video = document.getElementById('video');
+                    video.style.display = 'block';
+                    video.srcObject = stream;
+
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = event => {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+                    mediaRecorder.onstop = () => {
+                        stream.getTracks().forEach(track => track.stop());
+                        video.style.display = 'none';
+                        uploadVideo();
+                    };
+                    mediaRecorder.start();
+
+                    document.getElementById('startBtn').style.display = 'none';
+                    document.getElementById('stopBtn').style.display = 'inline-block';
                 })
                 .catch(error => console.error('Error:', error));
         }
 
-        function stopVideo() {
-            fetch('/stop')
+        function stopRecording() {
+            mediaRecorder.stop();
+            document.getElementById('stopBtn').style.display = 'none';
+        }
+
+        function uploadVideo() {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const formData = new FormData();
+            formData.append('video', blob);
+
+            fetch('/upload-video', {
+                method: 'POST',
+                body: formData
+            })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.message.includes('stopped')) {
-                        alert("Video stopped");
+                    if (data.message.includes('uploaded')) {
                         videoFilename = data.filename;
-                        document.getElementById('stopBtn').style.display = 'none';
                         document.getElementById('downloadBtn').style.display = 'inline-block';
                     }
                 })
@@ -67,23 +92,15 @@
         }
 
         function downloadVideo() {
-            fetch(`/download-video/${videoFilename}`)
-                .then(response => response.blob())
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = videoFilename;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-
-                    // Reset to initial state after download
-                    document.getElementById('downloadBtn').style.display = 'none';
-                    document.getElementById('startBtn').style.display = 'inline-block';
-                })
-                .catch(error => console.error('Error:', error));
+            window.location.href = `/download-video/${videoFilename}`;
+            setTimeout(resetApp, 2000);
+        }
+        function resetApp() {
+            document.getElementById('downloadBtn').style.display = 'none';
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').style.display = 'none';
+            recordedChunks = []; // Reset recorded chunks
+            videoFilename = ''; // Reset video filename
         }
     </script>
 </body>

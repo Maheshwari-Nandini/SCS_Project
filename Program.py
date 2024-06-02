@@ -3,15 +3,15 @@ import os
 from datetime import datetime
 
 # Initialize global variables for video capture and writer
-video_capture = None
 video_writer = None
 video_filename = None
+video_capture = None
 
-def Process():
-    global video_capture, video_writer, video_filename
+def Process(input_filepath):
+    global video_writer, video_filename, video_capture
 
-    # Set up the video capture
-    video_capture = cv2.VideoCapture(0)
+    # Set up the video capture from the file
+    video_capture = cv2.VideoCapture(input_filepath)
 
     # Check if the video capture was initialized successfully
     if not video_capture.isOpened():
@@ -26,7 +26,7 @@ def Process():
 
     # Generate a dynamic filename with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    video_filename = f'video_{timestamp}.avi'
+    video_filename = f'processed_{timestamp}.avi'
 
     # Ensure the uploads directory exists
     os.makedirs('uploads', exist_ok=True)
@@ -81,25 +81,17 @@ def Process():
 
         frame1 = frame2
         ret, frame2 = video_capture.read()
-        if not ret or frame2 is None:
-            print("Error: Could not read frame from video capture.")
+        if not ret:
             break
 
-    # Release the video capture and writer
-    release_resources()
-
-def stop_process():
     release_resources()
 
 def release_resources():
-    global video_capture, video_writer
+    global video_writer, video_capture
 
     if video_capture is not None:
         video_capture.release()
-        video_capture = None
 
     if video_writer is not None:
         video_writer.release()
         video_writer = None
-
-    cv2.destroyAllWindows()
